@@ -1,50 +1,50 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Version change: [INITIAL] → 1.0.0
+Modified principles: None (Initial Ratification)
+Added sections: Core Principles, Technology Stack, Development Workflow, Governance
+Templates requiring updates: ✅ .specify/templates/plan-template.md (Checked for consistency)
+Follow-up TODOs: None
+-->
+
+# NeuroVoice Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Real-Time Continuous Streaming
+The application MUST support continuous audio streaming via WebSockets. Full audio processing of the entire stream at every step is prohibited; processing must occur in real-time chunks to maintain low latency and provide immediate feedback to the user.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Low-Latency Response
+Target end-to-end latency (from speech input to voice output) is < 2 seconds. WebSocket loops MUST NOT be blocked by long-running computation; asynchronous processing and non-blocking IO are mandatory for all engine interactions.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Modular Clean Architecture
+The backend must follow Clean Architecture patterns, ensuring core logic is decoupled from external services (Whisper, Gemini, Google TTS). Interfaces must be modular to allow swapping STT, LLM, or TTS engines without refactoring the application core.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Resource Efficiency
+The system must be memory efficient, particularly in audio buffer management. Streaming sessions must be handled gracefully to ensure clean termination and resource release.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Minimalist Elegant UX
+The UI/UX prioritizes functionality with a premium, minimalist design. Essential feedback (voice volume, transcription state) must be integrated seamlessly without cluttering the interface.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Technology Stack
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+- **Backend Framework**: FastAPI (Asynchronous)
+- **STT Engine**: OpenAI Whisper
+- **Agent Framework**: ADK (using Vertex AI)
+- **Primary Brain LLM**: Google Gemini 2.5 Flash
+- **TTS Engine**: Google TTS
+- **Communication Protocol**: WebSockets
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Development Workflow
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+1. **Backend First**: Establish the core streaming logic and engine integrations.
+2. **Web Client**: Implement the primary interface with real-time indicators.
+3. **iOS Client**: Port interaction patterns to mobile once the web-based protocol is stabilized.
+4. **Validation**: Every major feature must be benchmarked against the <2s latency target.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- **Protocol Enforcement**: HTTP polling is strictly prohibited for real-time conversation.
+- **Async Execution**: Any operation that could block the WebSocket loop must be offloaded to background tasks or worker threads.
+- **Engine Evolution**: Model swaps require updated reliability and latency testing.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-04-12 | **Last Amended**: 2026-04-12
