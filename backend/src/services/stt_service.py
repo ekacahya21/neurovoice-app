@@ -39,9 +39,17 @@ class TranscriptionService:
 
         loop = asyncio.get_event_loop()
         try:
+            peak = np.max(np.abs(audio_data))
+            logger.debug(f"Transcribing chunk. Peak amplitude: {peak:.4f}")
+            
             segments, info = await loop.run_in_executor(
                 self.executor,
-                lambda: self.model.transcribe(audio_data, beam_size=5)
+                lambda: self.model.transcribe(
+                    audio_data, 
+                    beam_size=5,
+                    vad_filter=True,
+                    vad_parameters=dict(min_silence_duration_ms=500),
+                )
             )
             
             text = "".join([segment.text for segment in segments]).strip()

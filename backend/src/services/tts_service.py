@@ -20,11 +20,13 @@ class TTSService:
             sample_rate_hertz=settings.OUTPUT_RATE
         )
         
-    def initialize(self):
-        """Initialize the Google TTS client."""
         try:
-            self.client = texttospeech.TextToSpeechClient()
-            logger.info("TTSService client initialized.")
+            # Explicitly set the quota project from settings to avoid mismatches with creds
+            from google.api_core.client_options import ClientOptions
+            options = ClientOptions(quota_project_id=settings.GOOGLE_PROJECT_ID)
+            
+            self.client = texttospeech.TextToSpeechClient(client_options=options)
+            logger.info(f"TTSService client initialized for project: {settings.GOOGLE_PROJECT_ID}")
         except Exception as e:
             logger.error(f"Failed to initialize TTS client: {e}")
 

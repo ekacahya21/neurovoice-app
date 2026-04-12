@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     
     # API Keys & Auth (Should be set in .env)
     GOOGLE_PROJECT_ID: Optional[str] = None
+    GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = None
+    HF_TOKEN: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None
     
     model_config = SettingsConfigDict(

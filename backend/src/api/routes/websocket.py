@@ -42,45 +42,54 @@ async def conversation_endpoint(websocket: WebSocket):
 
     try:
         while session_active:
-            # Receive binary or text message
-            data = await websocket.receive()
+            # Receive raw ASGI message
+            message = await websocket.receive()
             
-            if "bytes" in data:
+            # Explicitly handle disconnect messages
+            if message["type"] == "websocket.disconnect":
+                logger.info("Client requested disconnect.")
+                break
+            
+            if "bytes" in message:
                 # 1. Receive binary audio chunk
-                audio_bytes = data["bytes"]
+                audio_bytes = message["bytes"]
                 audio_buffer.add_bytes(audio_bytes)
                 
                 # 2. Immediate Volume Feedback
-                # Extract a small window for amplitude
-                temp_chunk = audio_buffer.get_as_floats(duration_s=0.1) # peek small chunk
+                temp_chunk = audio_buffer.get_as_floats(duration_s=0.1, peek=True)
                 amplitude = audio_buffer.calculate_amplitude(temp_chunk)
                 await websocket.send_json({"type": "volume", "value": amplitude})
                 
-                # 3. Process STT periodically (e.g. if we have > 0.5s of audio)
-                # Note: In a production app, this would be more sophisticated (VAD)
-                if len(audio_buffer.buffer) > 16000: # ~0.5s
-                    audio_chunk = audio_buffer.get_as_floats(duration_s=0.5)
-                    text = await stt_service.transcribe_chunk(audio_chunk)
-                    
-                    if text:
-                        # 4. Transcription Feedback
-                        await websocket.send_json({"type": "transcription", "text": text})
+                # 3. Process STT periodically
+                # Increase to 1.0s for better accuracy and noise filtering
+                if len(audio_buffer.buffer) >= 32000: 
+                    # Only transcribe if there is significant sound
+                    if amplitude > 0.01: 
+                        logger.debug(f"Processing STT chunk. Buffer size: {len(audio_buffer.buffer)} bytes, Amplitude: {amplitude:.4f}")
+                        audio_chunk = audio_buffer.get_as_floats(duration_s=1.0)
+                        text = await stt_service.transcribe_chunk(audio_chunk)
                         
-                        # 5. Agent Response Loop
-                        async for text_chunk in agent_service.generate_response_stream(text):
-                            # Send text to client for real-time display
-                            await websocket.send_json({"type": "ai_text", "text": text_chunk})
+                        if text:
+                            # 4. Transcription Feedback
+                            await websocket.send_json({"type": "transcription", "text": text})
                             
-                            # 6. TTS & Audio Back
-                            # Synthesize small sentences/phrases
-                            audio_out = await tts_service.synthesize_chunk(text_chunk)
-                            if audio_out:
-                                await websocket.send_bytes(audio_out)
+                            # 5. Agent Response Loop
+                            async for text_chunk in agent_service.generate_response_stream(text):
+                                await websocket.send_json({"type": "ai_text", "text": text_chunk})
+                                
+                                # 6. TTS & Audio Back
+                                audio_out = await tts_service.synthesize_chunk(text_chunk)
+                                if audio_out:
+                                    await websocket.send_bytes(audio_out)
+                    else:
+                        # Clear silent buffer to avoid backlog
+                        audio_buffer.clear()
 
-            elif "text" in data:
+            elif "text" in message:
                 # Handle control messages
-                msg = json.loads(data["text"])
+                msg = json.loads(message["text"])
                 if msg.get("type") == "stop":
+                    logger.info("Stop message received from client.")
                     session_active = False
                     
     except WebSocketDisconnect:

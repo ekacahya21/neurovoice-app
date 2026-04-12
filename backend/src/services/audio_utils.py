@@ -16,10 +16,11 @@ class AudioBuffer:
         """Append incoming PCM bytes to the buffer."""
         self.buffer.extend(data)
         
-    def get_as_floats(self, duration_s: float = 0.5) -> np.ndarray:
+    def get_as_floats(self, duration_s: float = 0.5, peek: bool = False) -> np.ndarray:
         """
         Extract a chunk of audio as normalized floats [-1.0, 1.0].
         duration_s: How many seconds of audio to extract.
+        peek: If True, do not remove the bytes from the buffer.
         """
         num_samples = int(self.sample_rate * duration_s)
         bytes_needed = num_samples * (self.bit_depth // 8)
@@ -28,8 +29,9 @@ class AudioBuffer:
             return np.array([], dtype=np.float32)
             
         chunk = self.buffer[:bytes_needed]
-        # Remove consumed bytes (or keep for sliding window - for now consume)
-        self.buffer = self.buffer[bytes_needed:]
+        if not peek:
+            # Remove consumed bytes
+            self.buffer = self.buffer[bytes_needed:]
         
         # Convert bytes to int16 then to float32
         audio_int16 = np.frombuffer(chunk, dtype=np.int16)
