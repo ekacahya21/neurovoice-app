@@ -150,14 +150,26 @@ export const useNeuroVoice = () => {
           return [...filtered, finalMsg];
         } else {
           // AI message handling
-          // (Simplistic: append for now, but in real app would handle streaming chunks)
-          const aiMsg: Message = {
-            id: `ai-${Date.now()}`,
-            sender: 'ai',
-            text: data.text,
-            isStreaming: true // AI responses in this app are often streamed
-          };
-          return [...prev, aiMsg];
+          // Look for an ongoing AI message bubble to append to
+          const lastMsg = prev[prev.length - 1];
+          if (lastMsg && lastMsg.sender === 'ai' && lastMsg.isStreaming) {
+            const updated = [...prev];
+            // Append with a space if needed
+            const newText = lastMsg.text.endsWith(' ') || data.text.startsWith(' ') 
+              ? lastMsg.text + data.text 
+              : lastMsg.text + ' ' + data.text;
+              
+            updated[updated.length - 1] = { ...lastMsg, text: newText };
+            return updated;
+          } else {
+            // Start a new AI response bubble
+            return [...prev, {
+              id: `ai-${Date.now()}`,
+              sender: 'ai',
+              text: data.text,
+              isStreaming: true
+            }];
+          }
         }
     });
   };
