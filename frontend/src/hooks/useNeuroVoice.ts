@@ -13,7 +13,6 @@ export const useNeuroVoice = () => {
   const [status, setStatus] = useState<SessionStatus>('IDLE');
   const [messages, setMessages] = useState<Message[]>([]);
   const [volume, setVolume] = useState(0);
-  const [isThinking, setIsThinking] = useState(false);
   
   const socketRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -30,7 +29,6 @@ export const useNeuroVoice = () => {
     workletNodeRef.current = null;
     micStreamRef.current = null;
     setStatus('IDLE');
-    setIsThinking(false);
   }, []);
 
   const startSession = async () => {
@@ -83,11 +81,9 @@ export const useNeuroVoice = () => {
           if (data.type === 'volume') {
             setVolume(data.value);
           } else if (data.type === 'transcription' || data.type === 'ai_text') {
-            if (data.type === 'ai_text') setIsThinking(false);
             handleTextUpdate(data);
           }
         } else if (event.data instanceof Blob) {
-            setIsThinking(false);
             // In a real app, play this back or append to a buffer
             console.log("Received AI audio bytes");
         }
@@ -110,7 +106,6 @@ export const useNeuroVoice = () => {
           } else if (event.data && event.data.type === 'sentence_end') {
             console.log('[Worklet] Sentence ended. Signaling backend.');
             ws.send(JSON.stringify(event.data));
-            setIsThinking(true);
           }
         }
       };
@@ -186,7 +181,6 @@ export const useNeuroVoice = () => {
     status,
     messages,
     volume,
-    isThinking,
     startSession,
     stopSession
   };

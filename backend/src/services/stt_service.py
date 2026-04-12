@@ -47,6 +47,7 @@ class TranscriptionService:
                 lambda: self.model.transcribe(
                     audio_data, 
                     beam_size=5,
+                    language="id",
                     vad_filter=True,
                     vad_parameters=dict(min_silence_duration_ms=500),
                 )

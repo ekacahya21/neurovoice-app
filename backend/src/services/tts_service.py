@@ -12,8 +12,8 @@ class TTSService:
     def __init__(self):
         self.client = None
         self.voice = texttospeech.VoiceSelectionParams(
-            language_code="en-US",
-            name="en-US-Neural2-F"  # High quality neural voice
+            language_code="id-ID",
+            name="id-ID-Wavenet-A"
         )
         self.audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.LINEAR16,  # PCM

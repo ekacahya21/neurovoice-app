@@ -23,7 +23,10 @@ class AgentService:
             logger.warning("GOOGLE_PROJECT_ID not set. Gemini calls may fail.")
             
         aiplatform.init(project=settings.GOOGLE_PROJECT_ID)
-        self.model = GenerativeModel(self.model_id)
+        self.model = GenerativeModel(
+            self.model_id,
+            system_instruction="Anda adalah asisten suara NeuroVoice yang ramah. Berbicaralah selalu dalam Bahasa Indonesia secara alami."
+        )
         self.chat = self.model.start_chat()
         logger.info(f"AgentService initialized with model {self.model_id}")
 
