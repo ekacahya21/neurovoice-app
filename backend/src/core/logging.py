@@ -1,11 +1,11 @@
 import logging
 import sys
-from backend.src.core.config import settings
+from src.core.config import settings
 
 def setup_logging():
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineNo)d - %(message)s",
+        format="%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s",
         handlers=[
             logging.StreamHandler(sys.stdout)
         ]

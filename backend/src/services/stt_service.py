@@ -3,7 +3,7 @@ import logging
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 from faster_whisper import WhisperModel
-from backend.src.core.config import settings
+from src.core.config import settings
 
 logger = logging.getLogger(__name__)
 

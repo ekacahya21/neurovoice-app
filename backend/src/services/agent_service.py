@@ -3,7 +3,7 @@ import logging
 from typing import AsyncGenerator
 from google.cloud import aiplatform
 from vertexai.generative_models import GenerativeModel, ChatSession
-from backend.src.core.config import settings
+from src.core.config import settings
 
 logger = logging.getLogger(__name__)
 

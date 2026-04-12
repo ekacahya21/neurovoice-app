@@ -1,7 +1,7 @@
 import logging
 from typing import AsyncGenerator
 from google.cloud import texttospeech
-from backend.src.core.config import settings
+from src.core.config import settings
 
 logger = logging.getLogger(__name__)
 

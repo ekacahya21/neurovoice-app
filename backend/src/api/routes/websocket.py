@@ -2,10 +2,10 @@ import asyncio
 import logging
 import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from backend.src.services.audio_utils import AudioBuffer
-from backend.src.services.stt_service import TranscriptionService
-from backend.src.services.agent_service import AgentService
-from backend.src.services.tts_service import TTSService
+from src.services.audio_utils import AudioBuffer
+from src.services.stt_service import TranscriptionService
+from src.services.agent_service import AgentService
+from src.services.tts_service import TTSService
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -17,6 +17,17 @@ tts_service = TTSService()
 
 @router.websocket("/ws/conversation")
 async def conversation_endpoint(websocket: WebSocket):
+    """
+    Main WebSocket entry point for real-time voice-to-voice conversation.
+    
+    ### Communication Protocol:
+    1. **Client -> Server (Binary)**: Continuous stream of 16kHz 16-bit Mono PCM audio chunks.
+    2. **Server -> Client (JSON)**: 
+       - `{"type": "volume", "value": 0.05}`: Real-time amplitude feedback.
+       - `{"type": "transcription", "text": "Hello..."}`: Intermediate/Final STT results.
+       - `{"type": "ai_text", "text": "Hi there!"}`: Streaming AI response.
+    3. **Server -> Client (Binary)**: 16kHz PCM audio response from the AI.
+    """
     await websocket.accept()
     logger.info("WebSocket connection established.")
     
