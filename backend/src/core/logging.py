@@ -1,0 +1,21 @@
+import logging
+import sys
+from backend.src.core.config import settings
+
+def setup_logging():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineNo)d - %(message)s",
+        handlers=[
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    
+    # Set levels for noisy libraries
+    logging.getLogger("uvicorn").setLevel(logging.INFO)
+    logging.getLogger("fastapi").setLevel(logging.INFO)
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"Logging initialized for {settings.PROJECT_NAME}")
+
+setup_logging()
