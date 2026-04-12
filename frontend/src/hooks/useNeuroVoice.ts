@@ -13,6 +13,7 @@ export const useNeuroVoice = () => {
   const [status, setStatus] = useState<SessionStatus>('IDLE');
   const [messages, setMessages] = useState<Message[]>([]);
   const [volume, setVolume] = useState(0);
+  const [isThinking, setIsThinking] = useState(false);
   
   const socketRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -29,6 +30,7 @@ export const useNeuroVoice = () => {
     workletNodeRef.current = null;
     micStreamRef.current = null;
     setStatus('IDLE');
+    setIsThinking(false);
   }, []);
 
   const startSession = async () => {
@@ -81,11 +83,12 @@ export const useNeuroVoice = () => {
           if (data.type === 'volume') {
             setVolume(data.value);
           } else if (data.type === 'transcription' || data.type === 'ai_text') {
+            if (data.type === 'ai_text') setIsThinking(false);
             handleTextUpdate(data);
           }
         } else if (event.data instanceof Blob) {
-            // Handle AI Voice (PCM 16k bits)
-            // For MVP, we just play it back. In a real app, use a playback buffer.
+            setIsThinking(false);
+            // In a real app, play this back or append to a buffer
             console.log("Received AI audio bytes");
         }
       };
@@ -99,12 +102,16 @@ export const useNeuroVoice = () => {
         cleanup();
       };
 
-      // 4. Send audio chunks from worklet to websocket
+      // 4. Send audio chunks + metadata from worklet to websocket
       workletNode.port.onmessage = (event) => {
         if (ws.readyState === WebSocket.OPEN) {
-          ws.send(event.data);
-          // Optional: Add a counter or throttle this log to avoid spam
-          // console.debug('Sent audio chunk:', event.data.byteLength, 'bytes');
+          if (event.data instanceof ArrayBuffer) {
+            ws.send(event.data);
+          } else if (event.data && event.data.type === 'sentence_end') {
+            console.log('[Worklet] Sentence ended. Signaling backend.');
+            ws.send(JSON.stringify(event.data));
+            setIsThinking(true);
+          }
         }
       };
 
@@ -117,16 +124,41 @@ export const useNeuroVoice = () => {
 
   const handleTextUpdate = (data: any) => {
     setMessages(prev => {
-        // Logic to update or append messages based on sender
-        // Simplistic for MVP
         const isUser = data.type === 'transcription';
-        const newMsg: Message = {
-            id: Date.now().toString(),
-            sender: isUser ? 'user' : 'ai',
+        const isPartial = data.isPartial;
+
+        if (isUser && isPartial) {
+          // If we have an existing partial user message, update it.
+          // Otherwise, append a new partial message.
+          const lastMsg = prev[prev.length - 1];
+          if (lastMsg && lastMsg.sender === 'user' && lastMsg.isStreaming) {
+            const updated = [...prev];
+            updated[updated.length - 1] = { ...lastMsg, text: data.text };
+            return updated;
+          } else {
+            return [...prev, { id: 'partial-user', sender: 'user', text: data.text, isStreaming: true }];
+          }
+        } else if (isUser && !isPartial) {
+          // This is a final commit. Find the partial and "solidify" it.
+          const filtered = prev.filter(m => m.id !== 'partial-user');
+          const finalMsg: Message = {
+            id: `user-${Date.now()}`,
+            sender: 'user',
             text: data.text,
-            isStreaming: true
-        };
-        return [...prev, newMsg];
+            isStreaming: false
+          };
+          return [...filtered, finalMsg];
+        } else {
+          // AI message handling
+          // (Simplistic: append for now, but in real app would handle streaming chunks)
+          const aiMsg: Message = {
+            id: `ai-${Date.now()}`,
+            sender: 'ai',
+            text: data.text,
+            isStreaming: true // AI responses in this app are often streamed
+          };
+          return [...prev, aiMsg];
+        }
     });
   };
 
@@ -142,6 +174,7 @@ export const useNeuroVoice = () => {
     status,
     messages,
     volume,
+    isThinking,
     startSession,
     stopSession
   };

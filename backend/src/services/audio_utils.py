@@ -39,6 +39,20 @@ class AudioBuffer:
         
         return audio_float32
 
+    def get_remaining_floats(self) -> np.ndarray:
+        """Extract all remaining audio in the buffer as normalized floats."""
+        if len(self.buffer) == 0:
+            return np.array([], dtype=np.float32)
+            
+        # Convert entire buffer
+        audio_int16 = np.frombuffer(self.buffer, dtype=np.int16)
+        audio_float32 = audio_int16.astype(np.float32) / 32768.0
+        
+        # Clear buffer as it's been consumed
+        self.buffer = bytearray()
+        
+        return audio_float32
+
     def calculate_amplitude(self, chunk: np.ndarray) -> float:
         """Calculate the RMS amplitude of a chunk to indicate volume."""
         if chunk.size == 0:

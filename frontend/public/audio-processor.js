@@ -3,6 +3,8 @@ class NeuroVoiceAudioProcessor extends AudioWorkletProcessor {
     super();
     this.resampleBuffer = [];
     this.inputSampleRate = sampleRate;
+    this.isSpeaking = false;
+    this.silenceCounter = 0;
     console.log('[Worklet] Initialized. Sample Rate:', sampleRate);
   }
 
@@ -14,8 +16,35 @@ class NeuroVoiceAudioProcessor extends AudioWorkletProcessor {
     
     // Simple Linear Resampling to 16kHz
     const resamplingRatio = this.inputSampleRate / 16000;
+    const resampledChunk = [];
     for (let i = 0; i < inputChannelData.length; i += resamplingRatio) {
-      this.resampleBuffer.push(inputChannelData[Math.floor(i)]);
+      const sample = inputChannelData[Math.floor(i)];
+      resampledChunk.push(sample);
+      this.resampleBuffer.push(sample);
+    }
+
+    // Calculate RMS for VAD (on resampled audio)
+    let sumSquares = 0;
+    for (let i = 0; i < resampledChunk.length; i++) {
+      sumSquares += resampledChunk[i] * resampledChunk[i];
+    }
+    const rms = Math.sqrt(sumSquares / resampledChunk.length);
+
+    const THRESHOLD = 0.02;
+    const SILENCE_COOLDOWN_SAMPLES = 0.8 * 16000; // 800ms at 16kHz
+
+    if (rms > THRESHOLD) {
+      if (!this.isSpeaking) {
+        this.isSpeaking = true;
+      }
+      this.silenceCounter = 0;
+    } else if (this.isSpeaking) {
+      this.silenceCounter += resampledChunk.length;
+      if (this.silenceCounter >= SILENCE_COOLDOWN_SAMPLES) {
+        this.isSpeaking = false;
+        this.silenceCounter = 0;
+        this.port.postMessage({ type: 'sentence_end' });
+      }
     }
 
     // Process in chunks of 512 samples (~32ms at 16kHz)

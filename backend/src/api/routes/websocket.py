@@ -60,35 +60,47 @@ async def conversation_endpoint(websocket: WebSocket):
                 amplitude = audio_buffer.calculate_amplitude(temp_chunk)
                 await websocket.send_json({"type": "volume", "value": amplitude})
                 
-                # 3. Process STT periodically
-                # Increase to 1.0s for better accuracy and noise filtering
-                if len(audio_buffer.buffer) >= 32000: 
-                    # Only transcribe if there is significant sound
-                    if amplitude > 0.01: 
-                        logger.debug(f"Processing STT chunk. Buffer size: {len(audio_buffer.buffer)} bytes, Amplitude: {amplitude:.4f}")
-                        audio_chunk = audio_buffer.get_as_floats(duration_s=1.0)
+                # 3. Process PARTIAL STT periodically (e.g., every 1s)
+                # This provides low-latency visual feedback while the user is still speaking.
+                if len(audio_buffer.buffer) >= 32000:
+                    if amplitude > 0.01:
+                        # Peeking here so we don't consume the buffer yet (final commit needs the whole context)
+                        audio_chunk = audio_buffer.get_as_floats(duration_s=2.0, peek=True)
                         text = await stt_service.transcribe_chunk(audio_chunk)
-                        
                         if text:
-                            # 4. Transcription Feedback
-                            await websocket.send_json({"type": "transcription", "text": text})
-                            
-                            # 5. Agent Response Loop
-                            async for text_chunk in agent_service.generate_response_stream(text):
-                                await websocket.send_json({"type": "ai_text", "text": text_chunk})
-                                
-                                # 6. TTS & Audio Back
-                                audio_out = await tts_service.synthesize_chunk(text_chunk)
-                                if audio_out:
-                                    await websocket.send_bytes(audio_out)
+                            await websocket.send_json({"type": "transcription", "text": text, "isPartial": True})
                     else:
                         # Clear silent buffer to avoid backlog
                         audio_buffer.clear()
 
             elif "text" in message:
                 # Handle control messages
-                msg = json.loads(message["text"])
-                if msg.get("type") == "stop":
+                msg_text = message["text"]
+                try:
+                    msg = json.loads(msg_text)
+                except json.JSONDecodeError:
+                    continue
+
+                if msg.get("type") == "sentence_end":
+                    logger.info("Sentence End detected. Triggering AI commit.")
+                    # 1. Final Transcription (Consume entire buffer)
+                    full_audio = audio_buffer.get_remaining_floats()
+                    text = await stt_service.transcribe_chunk(full_audio)
+                    audio_buffer.clear()
+                    
+                    if text:
+                        await websocket.send_json({"type": "transcription", "text": text, "isPartial": False})
+                        
+                        # 2. Agent Response Loop
+                        async for text_chunk in agent_service.generate_response_stream(text):
+                            await websocket.send_json({"type": "ai_text", "text": text_chunk})
+                            
+                            # 3. TTS & Audio Back
+                            audio_out = await tts_service.synthesize_chunk(text_chunk)
+                            if audio_out:
+                                await websocket.send_bytes(audio_out)
+                
+                elif msg.get("type") == "stop":
                     logger.info("Stop message received from client.")
                     session_active = False
                     

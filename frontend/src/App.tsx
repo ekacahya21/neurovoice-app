@@ -6,7 +6,7 @@ import { useNeuroVoice } from './hooks/useNeuroVoice';
 import { motion } from 'framer-motion';
 
 function App() {
-  const { status, messages, volume, startSession, stopSession } = useNeuroVoice();
+  const { status, messages, volume, isThinking, startSession, stopSession } = useNeuroVoice();
 
   return (
     <div className="min-h-screen bg-bg-dark flex flex-col items-center justify-center p-8 overflow-hidden font-sans">
@@ -37,7 +37,7 @@ function App() {
 
         {/* Interaction Core */}
         <div className="flex flex-col items-center w-full gap-8">
-          <VolumeOrb volume={volume} isActive={status === 'ACTIVE'} />
+          <VolumeOrb volume={volume} isActive={status === 'ACTIVE'} isThinking={isThinking} />
           
           <div className="mt-8">
             <ControlButton 

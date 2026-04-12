@@ -19,7 +19,9 @@ class TTSService:
             audio_encoding=texttospeech.AudioEncoding.LINEAR16,  # PCM
             sample_rate_hertz=settings.OUTPUT_RATE
         )
-        
+
+    def initialize(self):
+        """Initialize the Google TTS client."""
         try:
             # Explicitly set the quota project from settings to avoid mismatches with creds
             from google.api_core.client_options import ClientOptions
