@@ -2,6 +2,8 @@ class NeuroVoiceAudioProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
     this.resampleBuffer = [];
+    this.preRollBuffer = []; // Buffer to store silence chunks
+    this.MAX_PREROLL_CHUNKS = 10; // ~320ms at 16kHz
     this.inputSampleRate = sampleRate;
     this.isSpeaking = false;
     this.silenceCounter = 0;
@@ -33,9 +35,12 @@ class NeuroVoiceAudioProcessor extends AudioWorkletProcessor {
     const THRESHOLD = 0.02;
     const SILENCE_COOLDOWN_SAMPLES = 0.8 * 16000; // 800ms at 16kHz
 
+    let justStartedSpeaking = false;
+
     if (rms > THRESHOLD) {
       if (!this.isSpeaking) {
         this.isSpeaking = true;
+        justStartedSpeaking = true;
       }
       this.silenceCounter = 0;
     } else if (this.isSpeaking) {
@@ -47,10 +52,26 @@ class NeuroVoiceAudioProcessor extends AudioWorkletProcessor {
       }
     }
 
+    // Flush pre-roll buffer if we just started speaking
+    if (justStartedSpeaking) {
+      while (this.preRollBuffer.length > 0) {
+        this.sendToMainThread(this.preRollBuffer.shift());
+      }
+    }
+
     // Process in chunks of 512 samples (~32ms at 16kHz)
     while (this.resampleBuffer.length >= 512) {
       const chunk = this.resampleBuffer.splice(0, 512);
-      this.sendToMainThread(chunk);
+      
+      if (this.isSpeaking) {
+        this.sendToMainThread(chunk);
+      } else {
+        // Save to pre-roll for future speech
+        this.preRollBuffer.push(chunk);
+        if (this.preRollBuffer.length > this.MAX_PREROLL_CHUNKS) {
+          this.preRollBuffer.shift();
+        }
+      }
     }
 
     return true;

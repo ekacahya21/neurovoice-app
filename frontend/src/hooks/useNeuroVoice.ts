@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { pcmChunksToWavBlob } from '../utils/wav_helper';
 
 export type SessionStatus = 'IDLE' | 'CONNECTING' | 'ACTIVE' | 'ERROR';
 
@@ -7,6 +8,7 @@ interface Message {
   sender: 'user' | 'ai';
   text: string;
   isStreaming: boolean;
+  audioUrl?: string;
 }
 
 export const useNeuroVoice = () => {
@@ -18,6 +20,8 @@ export const useNeuroVoice = () => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
+  const userAudioChunksRef = useRef<ArrayBuffer[]>([]);
+  const lastAudioUrlRef = useRef<string | null>(null);
 
   const cleanup = useCallback(() => {
     socketRef.current?.close();
@@ -103,9 +107,19 @@ export const useNeuroVoice = () => {
         if (ws.readyState === WebSocket.OPEN) {
           if (event.data instanceof ArrayBuffer) {
             ws.send(event.data);
+            userAudioChunksRef.current.push(event.data);
           } else if (event.data && event.data.type === 'sentence_end') {
             console.log('[Worklet] Sentence ended. Signaling backend.');
             ws.send(JSON.stringify(event.data));
+            
+            // Generate Playback URL for this utterance
+            if (userAudioChunksRef.current.length > 0) {
+              const blob = pcmChunksToWavBlob(userAudioChunksRef.current);
+              if (lastAudioUrlRef.current) URL.revokeObjectURL(lastAudioUrlRef.current);
+              lastAudioUrlRef.current = URL.createObjectURL(blob);
+              console.log('[Hook] WAV URL created:', lastAudioUrlRef.current);
+              userAudioChunksRef.current = []; // Clear for next sentence
+            }
           }
         }
       };
@@ -140,8 +154,10 @@ export const useNeuroVoice = () => {
             id: `user-${Date.now()}`,
             sender: 'user',
             text: data.text,
-            isStreaming: false
+            isStreaming: false,
+            audioUrl: lastAudioUrlRef.current || undefined
           };
+          lastAudioUrlRef.current = null; // Consume
           return [...filtered, finalMsg];
         } else {
           // AI message handling
