@@ -1,11 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Volume2 } from 'lucide-react';
 
 interface Message {
   id: string;
   sender: 'user' | 'ai';
   text: string;
   isStreaming?: boolean;
+  audioUrl?: string;
 }
 
 interface ChatInterfaceProps {
@@ -20,6 +22,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages }) => {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  const playAudio = (url: string) => {
+    const audio = new Audio(url);
+    audio.play().catch(e => console.error('Playback failed:', e));
+  };
 
   return (
     <div className="flex flex-col w-full max-w-2xl h-[400px] glass-dark rounded-3xl overflow-hidden mt-12">
@@ -55,11 +62,22 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages }) => {
                 animate={{ opacity: 1, y: 0 }}
                 className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
               >
-                <span className="text-[10px] uppercase tracking-widest text-slate-500 mb-1 ml-1 mr-1">
-                  {msg.sender === 'user' ? 'You' : 'NeuroVoice'}
-                </span>
+                <div className="flex items-center gap-2 mb-1 px-1">
+                  {msg.sender === 'user' && msg.audioUrl && (
+                    <button 
+                      onClick={() => playAudio(msg.audioUrl!)}
+                      className="p-1 rounded-full bg-brand/10 hover:bg-brand/20 text-brand-light transition-colors group"
+                      title="Play original audio"
+                    >
+                      <Volume2 size={12} className="group-hover:scale-110 transition-transform" />
+                    </button>
+                  )}
+                  <span className="text-[10px] uppercase tracking-widest text-slate-500">
+                    {msg.sender === 'user' ? 'You' : 'NeuroVoice'}
+                  </span>
+                </div>
                 <div 
-                  className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                  className={`relative max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
                     msg.sender === 'user' 
                       ? 'bg-brand text-white rounded-tr-none' 
                       : 'bg-white/10 text-slate-200 border border-white/10 rounded-tl-none'
